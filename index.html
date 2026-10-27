@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кацин. Ваше мнение очень важно для нас</title>
+<style>
+  :root { --or: #FF5A1F; --bk: #0b0b0b; --wh: #ffffff; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bk); color: var(--wh);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card { width: 100%; max-width: 420px; text-align: center; }
+  .brand { font-size: 56px; font-weight: 900; letter-spacing: 2px; margin: 0; line-height: 1; }
+  .brand span { color: var(--or); }
+  .tag { font-size: 14px; letter-spacing: 4px; margin: 6px 0 28px; opacity: .8; }
+  h2 { font-size: 22px; font-weight: 800; margin: 0 0 8px; }
+  .sub { font-size: 17px; margin: 0 0 24px; opacity: .9; }
+  .stars { display: flex; justify-content: center; gap: 6px; margin-bottom: 24px; }
+  .star {
+    font-size: 48px; line-height: 1; color: #444; background: none; border: 0;
+    padding: 0; cursor: pointer;
+  }
+  .star.on { color: var(--or); }
+  textarea {
+    display: none; width: 100%; min-height: 120px; background: #1a1a1a; color: var(--wh);
+    border: 2px solid #333; border-radius: 12px; padding: 12px; font-size: 16px;
+    font-family: inherit; resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--or); }
+  textarea.show { display: block; }
+  .send {
+    display: none; width: 100%; margin-top: 14px; background: var(--or); color: var(--wh);
+    border: 0; border-radius: 12px; padding: 16px; font-size: 18px; font-weight: 800;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .send.show { display: block; }
+  .send:disabled { opacity: .6; }
+  .msg { display: none; margin-top: 20px; font-size: 18px; line-height: 1.4; }
+  .msg.show { display: block; }
+  .msg a { color: var(--or); font-weight: 700; }
+  .err { color: #ff8a65; }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1 class="brand">КАЦИН</h1>
+  <p class="tag">ШАУРМА</p>
+
+  <h2>Ваше мнение очень важно для нас!</h2>
+  <p class="sub">Оцените, пожалуйста, нашу еду</p>
+
+  <div class="stars" id="stars">
+    <button class="star" data-v="1" aria-label="1 звезда">★</button>
+    <button class="star" data-v="2" aria-label="2 звезды">★</button>
+    <button class="star" data-v="3" aria-label="3 звезды">★</button>
+    <button class="star" data-v="4" aria-label="4 звезды">★</button>
+    <button class="star" data-v="5" aria-label="5 звёзд">★</button>
+  </div>
+
+  <textarea id="text" placeholder="Что понравилось или что можно улучшить?"></textarea>
+  <button class="send" id="send">Отправить</button>
+
+  <p class="msg" id="msg"></p>
+</main>
+
+<script>
+  const YANDEX_URL = "https://yandex.ru/maps/org/katsin/162196918697?si=hceyhhd8wh8yh36nqbar2pqhg8";
+  const stars = document.querySelectorAll(".star");
+  const textEl = document.getElementById("text");
+  const sendBtn = document.getElementById("send");
+  const msgEl = document.getElementById("msg");
+  let rating = 0;
+
+  function showMsg(html, cls = "") {
+    msgEl.innerHTML = html;
+    msgEl.className = "msg show " + cls;
+  }
+
+  function hideForm() {
+    textEl.classList.remove("show");
+    sendBtn.classList.remove("show");
+  }
+
+  stars.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      rating = Number(btn.dataset.v);
+      stars.forEach((s) => s.classList.toggle("on", Number(s.dataset.v) <= rating));
+
+      if (rating === 5) {
+        hideForm();
+        showMsg(
+          `Спасибо! Будем рады, если поделитесь отзывом на Яндекс Картах.<br><br>` +
+          `<a href="${YANDEX_URL}">Перейти к отзыву</a>`
+        );
+        setTimeout(() => { location.href = YANDEX_URL; }, 2000);
+      } else {
+        msgEl.className = "msg";
+        showMsg("Спасибо за честность. Расскажите, что пошло не так, и мы обязательно разберёмся.");
+        textEl.classList.add("show");
+        sendBtn.classList.add("show");
+        textEl.focus();
+      }
+    });
+  });
+
+  sendBtn.addEventListener("click", async () => {
+    const text = textEl.value.trim();
+    if (!text) {
+      showMsg("Напишите, пожалуйста, пару слов.", "err");
+      return;
+    }
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch("/.netlify/functions/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, text }),
+      });
+      if (!res.ok) throw new Error("bad status");
+      hideForm();
+      showMsg("Спасибо! Ваш отзыв отправлен.");
+    } catch (e) {
+      showMsg("Не удалось отправить отзыв. Попробуйте ещё раз.", "err");
+      sendBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
